@@ -7,4 +7,10 @@ const port = process.env.NODEPORT || '8080';
 app.set('port', port);
 const server = http.createServer(app);
 
+// catch all uncatched exception
+process.on('uncaughtException', (err) => {
+    // handle the error safely
+    console.log(err);
+});
+
 server.listen(port);

@@ -1,5 +1,5 @@
 {
-  "name": "Log-shell",
+  "name": "logshell",
   "version": "0.0.1",
   "description": "Make a log more fun & simple",
   "author": {
@@ -12,10 +12,14 @@
     "watch": "supervisor ./bin/www"
   },
   "dependencies": {
+    "body-parser": "^1.18.2",
+    "cookie-parser": "^1.4.3",
     "express": "~4.15.5",
+    "moment": "^2.21.0",
     "morgan": "~1.9.0",
+    "node-crate": "^2.0.3",
     "rethinkdbdash": "^2.3.31",
-    "node-crate": "^2.0.3"
+    "socket.io": "^2.0.4"
   },
   "devDependencies": {
     "babel-eslint": "^8.2.1",

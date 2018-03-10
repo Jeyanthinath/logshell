@@ -1,29 +1,33 @@
 const express = require('express');
-const rethinkdbdash = require('rethinkdbdash');
-const crate = require('node-crate');
-
+const cookieParser = require('cookie-parser');
+const bodyParser = require('body-parser');
+const api = require('./src/router/api');
+const r = require('./src/utils/db');
 
 // lets make the app
 const app = express();
 
-// connect to databases
-const r = rethinkdbdash({
-    db: 'hackathon',
-    servers: [
-        { host: 'databases-internal.hackathon.venom360.com', port: 28015 },
-    ],
-    ssl: { rejectUnauthorized: false },
-});
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: false }));
+app.use(cookieParser());
 
+app.use('/api/v1', api);
 
 // doing the ritual
 app.get('/hello', (req, res) => {
     res.end('Hello world !');
 });
 
+
+// test logs < need to be removed >
 app.get('/logs', async (req, res) => {
-    const value = await r.table('logs').limit(100).run();
-    res.end(value);
+    try {
+        const value = await r.table('logs').limit(10).run();
+        const val = JSON.stringify(value[2]);
+        res.end(`${val}`);
+    } catch (err) {
+        res.end('Error in Databse query');
+    }
 });
 
 module.exports = app;
