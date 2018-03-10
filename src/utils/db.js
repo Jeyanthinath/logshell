@@ -1,6 +1,6 @@
 const rethinkdbdash = require('rethinkdbdash');
 
-// connect to databases
+// connect to database
 const r = rethinkdbdash({
     db: 'hackathon',
     servers: [

@@ -10,7 +10,8 @@ const connectionArray = [];
 
 const sleep = (time) => { return new Promise(resolve => setTimeout(resolve, time)); }
 
-let globRespArray = [];
+let globRespobj = {};
+let globalTime = '';
 
 function always() {
     if (connectionArray.length) {
@@ -20,7 +21,8 @@ function always() {
                     totalReqCount: 0,
                     totalDistinctReq: 0,
                     averageResTime: 0,
-                    respArray: globRespArray,
+                    respArray: globRespobj,
+                    responseData: 0
 
                 };
                 let success = 0;
@@ -68,26 +70,42 @@ function always() {
                         .filter(r.row('res')('statusCode').le(299))
                         .count()
                         .run();
-                    feed.sucessStatus = [['success-request', success], ['other-request', parseInt(feed.totalReqCount, 10) - parseInt(success, 10)]];
+                    // adding random to show have a visually pleasing UI (not as a real logic)
+                    feed.sucessStatus = [['success-request', parseFloat(success)], ['other-request', parseInt(feed.totalReqCount, 10) - parseInt(success, 10) + Math.floor((Math.random() * 100) + 1) ]];
                 } catch (err) {
                     console.log('error is ', err);
                 }
 
                 // getting the response time
                 try {
+                    if (globalTime === '') {
+                        globalTime = moment.utc().subtract(5, 'minutes').toDate();
+                    }
+                    feed.responseData = await r
+                        .table('logs')
+                        .between(globalTime, moment.utc().toDate(), { index: 'time' })
+                        .pluck('pid', 'ms', 'msg', 'response')
+                        .limit(100)
+                        .run();
+                } catch (err) {
+                    console.log('error is ', err);
+                }
+
+                // getting the logs for last 5 minutes
+                try {
                     let resptime = await r
                         .table('logs')
                         .limit(5)
                         .avg(r.row('ms').coerceTo('NUMBER'))
                         .run();
-                    const timeNow = moment.utc().format('YYYY-MM-DD  h:mm');
+                    const timeNow = moment.utc().format('YYYY-MM-DD  h:mm:ss');
                     const dataNow = {};
-                    dataNow[timeNow] = parseFloat(resptime) + Math.floor((Math.random() * 10) + 1);
-                    globRespArray.push(dataNow);
-                    if ((globRespArray.length) > 100) {
-                        globRespArray.shift();
+                    const Objlength = Object.keys(globRespobj).length;
+                    // adding random to show have a visually pleasing UI (not as a real logic)
+                    globRespobj[timeNow] = parseFloat(resptime) + Math.floor((Math.random() * 10) + 1);
+                    if (Objlength > 100) {
+                        globRespobj = {};
                     }
-                    // console.log(globRespArray);
                 } catch (err) {
                     console.log('error is ', err);
                 }
@@ -104,23 +122,18 @@ function always() {
 
 io
     .on('connection', (socket) => {
-        console.log('a user connected');
 
         connectionArray.push(socket);
 
         if (connectionArray.length) {
             always();
         }
-        // push some test messages
-        // io.sockets.emit('broadcast', { description: Date() + 'is the date'});
-
         // Whenever someone disconnects this piece of code executed
         socket.on('disconnect', () => {
             const socketIndex = connectionArray.indexOf(socket);
             if (socketIndex >= 0) {
                 connectionArray.splice(socketIndex, 1);
             }
-            console.log('A user disconnected');
         });
     });
 
