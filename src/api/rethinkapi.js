@@ -1,6 +1,7 @@
 const express = require('express');
 const r = require('../utils/db');
 const moment = require('moment');
+const geoip = require('geoip-lite');
 
 const app = express();
 const server = app.listen(1337);
@@ -10,7 +11,6 @@ const connectionArray = [];
 
 const sleep = (time) => { return new Promise(resolve => setTimeout(resolve, time)); }
 
-// let globRespobj = {};
 let globalRespCounter = 0;
 
 function always() {
@@ -23,6 +23,7 @@ function always() {
                     averageResTime: 0,
                     respObj: {},
                     responseData: 0,
+                    reqIPCountry: [],
                 };
                 let success = 0;
 
@@ -70,7 +71,7 @@ function always() {
                         .count()
                         .run();
                     // adding random to show have a visually pleasing UI (not as a real logic)
-                    feed.sucessStatus = [['success-request', parseFloat(success)], ['other-request', parseInt(feed.totalReqCount, 10) - parseInt(success, 10) + Math.floor((Math.random() * 100) + 1) ]];
+                    feed.sucessStatus = [['success-request', parseFloat(success)], ['other-request', parseInt(feed.totalReqCount, 10) - parseInt(success, 10)]];
                 } catch (err) {
                     console.log('error is ', err);
                 }
@@ -99,10 +100,37 @@ function always() {
                     feed.responseData = await r
                         .table('logs')
                         .between(moment.utc().subtract(5, 'minutes').toDate(), moment.utc().toDate(), { index: 'time' })
-                        .pluck('pid', 'ms', 'msg', 'response', 'reqStart', 'resp')
+                        .pluck('pid', 'ms', 'msg', 'response', 'reqStart', 'level')
                         .limit(100)
                         .run();
-                    // console.log(feed.responseData)
+                } catch (err) {
+                    console.log('error is ', err);
+                }
+
+                // getting the response for geoip based location tracking
+                try {
+                    const countries = {};
+                    const reqIP = await r
+                        .table('logs')
+                        .between(moment.utc().subtract(5, 'minutes').toDate(), moment.utc().toDate(), { index: 'time' })
+                        .pluck('remoteAddress')
+                        .limit(100)
+                        .run();
+                    reqIP.forEach((element) => {
+                        try {
+                            const geo = geoip.lookup(element.remoteAddress);
+                            if (geo.country in countries) {
+                                countries[geo.country] += 1;
+                            } else {
+                                countries[geo.country] = 1;
+                            }
+                        } catch (err) {
+                            // Ignore malfored errors
+                        }
+                    });
+                    Object.keys(countries).forEach((element) => {
+                        feed.reqIPCountry.push({ country: element, count: countries[element] });
+                    });
                 } catch (err) {
                     console.log('error is ', err);
                 }
@@ -119,7 +147,6 @@ function always() {
 
 io
     .on('connection', (socket) => {
-
         connectionArray.push(socket);
 
         if (connectionArray.length) {
