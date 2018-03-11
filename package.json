@@ -15,6 +15,7 @@
     "body-parser": "^1.18.2",
     "cookie-parser": "^1.4.3",
     "express": "~4.15.5",
+    "geoip-lite": "^1.2.1",
     "moment": "^2.21.0",
     "morgan": "~1.9.0",
     "node-crate": "^2.0.3",

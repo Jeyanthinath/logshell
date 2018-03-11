@@ -10,8 +10,8 @@ const connectionArray = [];
 
 const sleep = (time) => { return new Promise(resolve => setTimeout(resolve, time)); }
 
-let globRespobj = {};
-let globalTime = '';
+// let globRespobj = {};
+let globalRespCounter = 0;
 
 function always() {
     if (connectionArray.length) {
@@ -21,9 +21,8 @@ function always() {
                     totalReqCount: 0,
                     totalDistinctReq: 0,
                     averageResTime: 0,
-                    respArray: globRespobj,
-                    responseData: 0
-
+                    respObj: {},
+                    responseData: 0,
                 };
                 let success = 0;
 
@@ -76,36 +75,34 @@ function always() {
                     console.log('error is ', err);
                 }
 
-                // getting the response time
+                // getting the logs for last 5 minutes
                 try {
-                    if (globalTime === '') {
-                        globalTime = moment.utc().subtract(5, 'minutes').toDate();
+                    if (globalRespCounter < 101) {
+                        globalRespCounter += 1;
                     }
-                    feed.responseData = await r
+                    const resptime = await r
                         .table('logs')
-                        .between(globalTime, moment.utc().toDate(), { index: 'time' })
-                        .pluck('pid', 'ms', 'msg', 'response')
-                        .limit(100)
+                        .between(moment.utc().subtract(5, 'minutes').toDate(), moment.utc().toDate(), { index: 'time' })
+                        .limit(globalRespCounter)
+                        .pluck('ms', 'reqStart', 'res')
                         .run();
+                    resptime.forEach((element) => {
+                        const reqTime = moment(element.reqStart).format('YYYY-MM-DD  hh:mm:ss');
+                        feed.respObj[reqTime] = parseFloat(element.ms);
+                    });
                 } catch (err) {
                     console.log('error is ', err);
                 }
 
-                // getting the logs for last 5 minutes
+                // getting the response time for last 100 request
                 try {
-                    let resptime = await r
+                    feed.responseData = await r
                         .table('logs')
-                        .limit(5)
-                        .avg(r.row('ms').coerceTo('NUMBER'))
+                        .between(moment.utc().subtract(5, 'minutes').toDate(), moment.utc().toDate(), { index: 'time' })
+                        .pluck('pid', 'ms', 'msg', 'response', 'reqStart', 'resp')
+                        .limit(100)
                         .run();
-                    const timeNow = moment.utc().format('YYYY-MM-DD  h:mm:ss');
-                    const dataNow = {};
-                    const Objlength = Object.keys(globRespobj).length;
-                    // adding random to show have a visually pleasing UI (not as a real logic)
-                    globRespobj[timeNow] = parseFloat(resptime) + Math.floor((Math.random() * 10) + 1);
-                    if (Objlength > 100) {
-                        globRespobj = {};
-                    }
+                    // console.log(feed.responseData)
                 } catch (err) {
                     console.log('error is ', err);
                 }
